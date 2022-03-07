@@ -10,12 +10,9 @@ class IngredientSerializers(serializers.ModelSerializer):
 
 
 class RecipeSerializer(serializers.ModelSerializer):
-    ingredients = serializers.PrimaryKeyRelatedField(
-        many=True,
-        queryset=Ingredient.objects.all()
-    )
+    ingredients = IngredientSerializers(many=True)
 
     class Meta:
         model = Recipe
-        fields = ('id', 'name', 'description')
+        fields = ('id', 'name', 'description', 'ingredients')
         read_only_fields = ('id',)
