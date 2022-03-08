@@ -9,6 +9,11 @@ class IngredientSerializers(serializers.ModelSerializer):
         fields = ('name',)
 
 
+def _create_ingredients(recipe: Recipe, ingredients=[]):
+    for ingredient in ingredients:
+        Ingredient.objects.create(recipe=recipe, name=ingredient['name'])
+
+
 class RecipeSerializer(serializers.ModelSerializer):
     ingredients = IngredientSerializers(many=True)
 
@@ -20,7 +25,14 @@ class RecipeSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         ingredients = validated_data.pop('ingredients')
         recipe = Recipe.objects.create(**validated_data)
-        for ingredient in ingredients:
-            Ingredient.objects.create(recipe=recipe, name=ingredient['name'])
+        _create_ingredients(recipe, ingredients)
 
         return recipe
+
+    def update(self, instance, validated_data):
+        ingredients = validated_data.pop('ingredients')
+        super().update(instance, validated_data)
+        instance.ingredients.all().delete()
+        _create_ingredients(instance, ingredients)
+
+        return instance

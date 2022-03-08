@@ -97,3 +97,38 @@ class RecipeTests(TestCase):
                          len(payload['ingredients']))
         for ingredient in payload['ingredients']:
             self.assertIn(ingredient, res.data['ingredients'])
+
+    def test_recipe_edit(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'tomato')
+
+        payload = {
+            'name': 'Pizza',
+            'description': 'Put it in the oven',
+            'ingredients': [{'name': 'casa-tarradellas'}]
+        }
+
+        res = self.client.patch(url_for_recipe(recipe.id),
+                                json.dumps(payload),
+                                content_type="application/json")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(recipe.id, res.data['id'])
+        self.assertEqual(payload['name'], res.data['name'])
+        self.assertEqual(payload['description'],
+                         res.data['description'])
+        self.assertEqual(payload['ingredients'], res.data['ingredients'])
+
+    def test_delete_recipe(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'lettuce')
+
+        recipes_before = Recipe.objects.count()
+        ingredients_before = Ingredient.objects.count()
+        ingredients_now = ingredients_before - recipe.ingredients.count()
+        res = self.client.delete(url_for_recipe(recipe.id))
+        self.assertEqual(res.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertEqual(Ingredient.objects.count(), ingredients_now)
+        self.assertEqual(Recipe.objects.all().count(), recipes_before-1)
