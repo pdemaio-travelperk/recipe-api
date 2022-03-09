@@ -51,6 +51,10 @@ class RecipeTests(TestCase):
         self.assertEqual(res.status_code, status.HTTP_200_OK)
         self.assertEqual(RecipeSerializer(recipe).data, res.data)
 
+    def test_retrieve_non_existent_recipe(self):
+        res = self.client.get(url_for_recipe(123))
+        self.assertEqual(res.status_code, status.HTTP_404_NOT_FOUND)
+
     def test_retrieve_recipes_by_name_substring(self):
         recipe1 = sample_recipe()
         sample_ingredient(recipe1)
@@ -98,6 +102,79 @@ class RecipeTests(TestCase):
         for ingredient in payload['ingredients']:
             self.assertIn(ingredient, res.data['ingredients'])
 
+    def test_create_invalid_recipe_without_ingredients(self):
+        payload = {
+            'name': 'Pizza',
+            'description': 'Put it in the oven',
+        }
+        res = self.client.post(RECIPE_URL,
+                               json.dumps(payload),
+                               content_type="application/json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_invalid_recipe_without_name(self):
+        payload = {
+            'name': '',
+            'description': 'Put it in the oven',
+            'ingredients': [
+                {
+                    'name': 'dough'
+                },
+                {
+                    'name': 'cheese'
+                },
+                {
+                    'name': 'tomato'
+                }
+            ]
+        }
+        res = self.client.post(RECIPE_URL,
+                               json.dumps(payload),
+                               content_type="application/json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_invalid_recipe_without_description(self):
+        payload = {
+            'name': 'Pizza',
+            'description': '',
+            'ingredients': [
+                {
+                    'name': 'dough'
+                },
+                {
+                    'name': 'cheese'
+                },
+                {
+                    'name': 'tomato'
+                }
+            ]
+        }
+        res = self.client.post(RECIPE_URL,
+                               json.dumps(payload),
+                               content_type="application/json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_invalid_recipe_without_ingredient_name(self):
+        payload = {
+            'name': 'Pizza',
+            'description': 'Put it in the oven',
+            'ingredients': [
+                {
+                    'name': ''
+                },
+                {
+                    'name': 'cheese'
+                },
+                {
+                    'name': 'tomato'
+                }
+            ]
+        }
+        res = self.client.post(RECIPE_URL,
+                               json.dumps(payload),
+                               content_type="application/json")
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
     def test_recipe_edit(self):
         recipe = sample_recipe()
         sample_ingredient(recipe)
@@ -119,6 +196,102 @@ class RecipeTests(TestCase):
         self.assertEqual(payload['description'],
                          res.data['description'])
         self.assertEqual(payload['ingredients'], res.data['ingredients'])
+
+    def test_recipe_edit_remove_ingredients(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'tomato')
+
+        payload = {
+            'name': 'Pizza',
+            'description': 'Put it in the oven',
+        }
+
+        res = self.client.patch(url_for_recipe(recipe.id),
+                                json.dumps(payload),
+                                content_type="application/json")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(recipe.id, res.data['id'])
+        self.assertEqual(payload['name'], res.data['name'])
+        self.assertEqual(payload['description'],
+                         res.data['description'])
+        self.assertEqual(recipe.ingredients.count(),
+                         len(res.data['ingredients']))
+
+    def test_recipe_edit_remove_ingredients_with_empty_list(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'tomato')
+
+        payload = {
+            'name': 'Pizza',
+            'description': 'Put it in the oven',
+            'ingredients': []
+        }
+
+        res = self.client.patch(url_for_recipe(recipe.id),
+                                json.dumps(payload),
+                                content_type="application/json")
+
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(recipe.id, res.data['id'])
+        self.assertEqual(payload['name'], res.data['name'])
+        self.assertEqual(payload['description'],
+                         res.data['description'])
+        self.assertEqual(recipe.ingredients.count(),
+                         len(res.data['ingredients']))
+
+    def test_recipe_invalid_edit_remove_name(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'tomato')
+
+        payload = {
+            'name': '',
+            'description': 'Put it in the oven',
+            'ingredients': [{'name': 'casa-tarradellas'}]
+        }
+
+        res = self.client.patch(url_for_recipe(recipe.id),
+                                json.dumps(payload),
+                                content_type="application/json")
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_recipe_invalid_edit_remove_description(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'tomato')
+
+        payload = {
+            'name': 'Pizza',
+            'description': '',
+            'ingredients': [{'name': 'casa-tarradellas'}]
+        }
+
+        res = self.client.patch(url_for_recipe(recipe.id),
+                                json.dumps(payload),
+                                content_type="application/json")
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_recipe_invalid_edit_remove_ingredient_name(self):
+        recipe = sample_recipe()
+        sample_ingredient(recipe)
+        sample_ingredient(recipe, 'tomato')
+
+        payload = {
+            'name': 'Pizza',
+            'description': 'Put it in the oven',
+            'ingredients': [{'name': ''}]
+        }
+
+        res = self.client.patch(url_for_recipe(recipe.id),
+                                json.dumps(payload),
+                                content_type="application/json")
+
+        self.assertEqual(res.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_delete_recipe(self):
         recipe = sample_recipe()
